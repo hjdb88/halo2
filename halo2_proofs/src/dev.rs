@@ -593,6 +593,7 @@ impl<'a, F: Field + Group> Assignment<F> for MockProver<'a, F> {
         Ok(())
     }
 
+    /// 对fixed Column进行赋值
     fn assign_fixed<V, VR, A, AR>(
         &mut self,
         _: A,
@@ -642,6 +643,7 @@ impl<'a, F: Field + Group> Assignment<F> for MockProver<'a, F> {
         Ok(())
     }
 
+    /// 增加置换信息
     fn copy(
         &mut self,
         left_column: Column<Any>,
@@ -653,6 +655,7 @@ impl<'a, F: Field + Group> Assignment<F> for MockProver<'a, F> {
             return Err(Error::not_enough_rows_available(self.k));
         }
 
+        // 增加permutation信息
         match self.permutation.as_mut() {
             Some(permutation) => permutation.copy(left_column, left_row, right_column, right_row),
             None => {

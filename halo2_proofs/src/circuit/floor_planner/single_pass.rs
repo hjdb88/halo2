@@ -30,7 +30,10 @@ use crate::{
 #[derive(Debug)]
 pub struct SimpleFloorPlanner;
 
+/// SimpleFloorPlanner是对FloorPlanner接口的实现
 impl FloorPlanner for SimpleFloorPlanner {
+    /// SimpleFloorPlanner实现了FloorPlanner接口的synthesize函数。
+    /// 该函数创建出SingleChipLayouter对象，并直接调用相应的synthesize函数开始电路的synthesize。
     fn synthesize<F: Field, CS: Assignment<F>, C: Circuit<F>>(
         cs: &mut CS,
         circuit: &C,
@@ -107,9 +110,10 @@ impl<'a, F: Field, CS: Assignment<F> + 'a> Layouter<F> for SingleChipLayouter<'a
     {
         let region_name: String = name().into();
         let timer = start_timer!(|| format!("assign region: {}", region_name));
-        let region_index = self.regions.len();
+        let region_index = self.regions.len(); // 获取当前region位置
 
         // Get shape of the region.
+        // 调用RegionShape，收集该Region的电路涉及到的Column信息
         let mut shape = RegionShape::new(region_index.into());
         {
             let timer_1st = start_timer!(|| format!("assign region 1st pass: {}", region_name));
@@ -129,6 +133,8 @@ impl<'a, F: Field, CS: Assignment<F> + 'a> Layouter<F> for SingleChipLayouter<'a
 
         // Lay out this region. We implement the simplest approach here: position the
         // region starting at the earliest row for which none of the columns are in use.
+        // 布置这个区域。我们在这里实施最简单的方法：将区域定位在没有使用任何列的最早行。
+        // 根据收集到的Column信息，获取Region开始的行号
         let mut region_start = 0;
         for column in &shape.columns {
             let column_start = self.columns.get(column).cloned().unwrap_or(0);
@@ -153,25 +159,31 @@ impl<'a, F: Field, CS: Assignment<F> + 'a> Layouter<F> for SingleChipLayouter<'a
         self.regions.push(region_start.into());
 
         // Update column usage information.
+        // 在Region中记录所有使用的Column信息
         for column in shape.columns {
             self.columns.insert(column, region_start + shape.row_count);
         }
 
         // Assign region cells.
+        // 分配region cell
+        // 创建Region
         self.cs.enter_region(name);
         let mut region = SingleChipLayouterRegion::new(self, region_index.into());
         let result = {
             let timer_2nd = start_timer!(|| format!("assign region 2nd pass: {}", region_name));
             let region: &mut dyn RegionLayouter<F> = &mut region;
+            // 采用SingleChipLayouterRegion对电路赋值
             let result = assignment(region.into());
             end_timer!(timer_2nd);
             result
         }?;
         let constants_to_assign = region.constants;
+        // 退出Region
         self.cs.exit_region();
 
         // Assign constants. For the simple floor planner, we assign constants in order in
         // the first `constants` column.
+        // 如果制定了constants，需要增加置换限制
         if self.constants.is_empty() {
             if !constants_to_assign.is_empty() {
                 return Err(Error::NotEnoughColumnsForConstants);
@@ -356,17 +368,22 @@ impl<'a, F: Field, CS: Assignment<F> + 'a> Layouter<F> for SingleChipLayouter<'a
     {
         // Maintenance hazard: there is near-duplicate code in `v1::AssignmentPass::assign_table`.
         // Assign table cells.
+        // 创建Region
         self.cs.enter_region(name);
         let mut table = SimpleTableLayouter::new(self.cs, &self.table_columns);
         {
             let table: &mut dyn TableLayouter<F> = &mut table;
+            // 查找表赋值
             assignment(table.into())
         }?;
         let default_and_assigned = table.default_and_assigned;
+        // 退出Region
         self.cs.exit_region();
 
         // Check that all table columns have the same length `first_unused`,
         // and all cells up to that length are assigned.
+        // 检查所有表格列是否具有相同的长度“first_unused”，并且分配了不超过该长度的所有单元格。
+        // 获取出所有查找表相关的Column对应的最大使用行数
         let first_unused = {
             match default_and_assigned
                 .values()
@@ -386,15 +403,19 @@ impl<'a, F: Field, CS: Assignment<F> + 'a> Layouter<F> for SingleChipLayouter<'a
             }
         };
 
+        // default_and_assigned记录了在一个Fixed Column上的default值以及某个cell是否已经设置
         // Record these columns so that we can prevent them from being used again.
         for column in default_and_assigned.keys() {
             self.table_columns.push(*column);
         }
 
+        // 根据default_and_assigned信息，采用default值扩展所有的column
         for (col, (default_val, _)) in default_and_assigned {
             // default_val must be Some because we must have assigned
             // at least one cell in each column, and in that case we checked
             // that all cells up to first_unused were assigned.
+            // default_val必须是Some，因为我们必须在每一列中至少分配一个单元格，
+            // 在这种情况下，我们检查是否分配了直到first_unused的所有单元格
             self.cs
                 .fill_from_row(col.inner(), first_unused, default_val.unwrap())?;
         }
@@ -489,6 +510,7 @@ impl<'r, 'a, F: Field, CS: Assignment<F> + 'a> RegionLayouter<F>
         self.layouter.cs.annotate_column(annotation, column);
     }
 
+    /// 给一个Advice列中Cell赋值
     fn assign_advice<'v>(
         &'v mut self,
         annotation: &'v (dyn Fn() -> String + 'v),
@@ -496,6 +518,7 @@ impl<'r, 'a, F: Field, CS: Assignment<F> + 'a> RegionLayouter<F>
         offset: usize,
         to: &'v mut (dyn FnMut() -> Value<Assigned<F>> + 'v),
     ) -> Result<Cell, Error> {
+        // 调用Assignment接口设置相应的Cell信息，特别注意的是在设置的时候需要Cell的全局偏移
         self.layouter.cs.assign_advice(
             annotation,
             column,

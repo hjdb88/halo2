@@ -41,6 +41,7 @@ use crate::plonk::{Advice, Any, Assigned, Column, Error, Fixed, Instance, Select
 /// [`Layouter`]: super::Layouter
 pub trait RegionLayouter<F: Field>: fmt::Debug {
     /// Enables a selector at the given offset.
+    /// enable选择子
     fn enable_selector<'v>(
         &'v mut self,
         annotation: &'v (dyn Fn() -> String + 'v),
@@ -59,6 +60,7 @@ pub trait RegionLayouter<F: Field>: fmt::Debug {
     );
 
     /// Assign an advice column value (witness)
+    /// advice或者fixed赋值
     fn assign_advice<'v>(
         &'v mut self,
         annotation: &'v (dyn Fn() -> String + 'v),
@@ -106,6 +108,7 @@ pub trait RegionLayouter<F: Field>: fmt::Debug {
     /// Constrains a cell to have a constant value.
     ///
     /// Returns an error if the cell is in a column where equality has not been enabled.
+    /// cell相等约束
     fn constrain_constant(&mut self, cell: Cell, constant: Assigned<F>) -> Result<(), Error>;
 
     /// Constraint two cells to have the same value.
@@ -123,6 +126,7 @@ pub trait TableLayouter<F: Field>: fmt::Debug {
     /// Assigns a fixed value to a table cell.
     ///
     /// Returns an error if the table cell has already been assigned to.
+    /// 对表中的某个TableColumn的Cell进行赋值
     fn assign_cell<'v>(
         &'v mut self,
         annotation: &'v (dyn Fn() -> String + 'v),

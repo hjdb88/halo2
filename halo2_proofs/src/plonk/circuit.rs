@@ -1336,10 +1336,12 @@ impl<F: Field, C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>> IntoIterato
 }
 
 /// Gate
+/// 描述“Custom Gate”的限制表达式
 #[derive(Clone, Debug)]
 pub struct Gate<F: Field> {
     name: &'static str,
     constraint_names: Vec<&'static str>,
+    /// polys中的表达式Expression就是用来表示“Custom Gate”
     pub polys: Vec<Expression<F>>,
     /// We track queried selectors separately from other cells, so that we can use them to
     /// trigger debug checks on gates.
@@ -1372,6 +1374,7 @@ impl<F: Field> Gate<F> {
 
 /// This is a description of the circuit environment, such as the gate, column and
 /// permutation arrangements.
+/// 描述电路相关的信息
 #[derive(Debug, Clone)]
 pub struct ConstraintSystem<F: Field> {
     pub num_fixed_columns: usize,
